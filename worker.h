@@ -17,9 +17,10 @@ private slots:
     void jobFinished(bool success);
 
     QObject *m_parent;
-    DBClientConnection *m_client;
+    QSqlDatabase m_database;
     Scorer *m_scorer;
-    int m_workCount;
+    int m_jobCount;
+    QTimer *m_timer;
 };
 
-#endif WORKER_H
+#endif // WORKER_H

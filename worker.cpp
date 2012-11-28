@@ -3,36 +3,49 @@
 Worker::Worker(QObject *parent):
     QObject(parent),
     m_parent(parent),
-    m_work(0),
-    m_client(new DBClientConnection),
-    m_workResult(0),
-    m_workCount(0)
+    m_scorer(0),
+    m_jobCount(0),
+    m_timer(new QTimer(this))
 {
-    m_client->connect("mongodb://127.0.0.1");
+    m_database = QSqlDatabase::addDatabase("QMYSQL");
+    m_database.setHostName("127.0.0.1");
+    m_database.setDatabaseName("codecrackerdb");
+    m_database.setUserName("virgin");
+    m_database.setPassword("mojito");
+    m_database.open();
+
+    connect(m_timer, SIGNAL(timeout()), this, SLOT(fetchJob()));
+    timer->start(1000);
 }
 
 Worker::~Worker()
 {
-    delete m_client;
+    m_database.close();
 }
 
-Worker::setScorer(Scorer *scorer)
+void Worker::setScorer(Scorer *scorer)
 {
     m_scorer = scorer;
 }
 
-Worker::fetchJob()
+void Worker::fetchJob()
 {
-    auto_ptr<DBClientCursor> cursor = m_client->query("codecracker.works", BSONObj());
-    while (cursor->more() && m_workCount < 3)
+    if (m_jobCount >= 3)
+        return;
+    QSqlQuery query("SELECT jobId, userId, problemId, compilerId, sourceCode FROM jobs LIMIT " + QString::number(3 - m_jobCount), m_database);
+    query.finish();
+    while (query.next())
     {
-        BSONObj jobDesc = cursor->next;
-        string jobId = jobDesc.getStringField("jobId");
-        string userId = jobDesc.getStringField("userId");
-        string problemId = jobDesc.getStringField("problemId");
-        string compilerId = jobDesc.getStringField("compilerId");
-        string sourceCode = jobDesc.getStringField("sourceCode");
-        m_client->remove("codecracker.works", QUERY("jobId" << jobId));
+        m_jobCount++:
+
+        QString jobId = query.value(0).toString();
+        QString userId = query.value(1).toString();
+        QString problemId = query.value(2).toString();
+        QString compilerId = query.value(3).toString();
+        QString sourceCode = query.value(4).toString();
+
+        // remove the job entry from the jobs queue
+        QSqlQuery removeQuery("DELETE FROM jobs WHERE jobId = " + jobId, m_database);
 
         Job *job = new Job(this);
         connect(job, SIGNAL(finished(bool), this, jobFinished(bool));
@@ -45,10 +58,12 @@ Worker::fetchJob()
     }
 }
 
-Worker::jobFinished(bool success)
+void Worker::jobFinished(bool success)
 {
     if (!success)
         return;
     Job *j = qobject_cast<Job *>(QObject::sender());
+    qDebug() << "job successful";
     m_scorer->updateScore(Job);
+    m_jobCount--;
 }

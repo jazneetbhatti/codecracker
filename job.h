@@ -14,6 +14,10 @@ public:
     QString sourceCode() { return m_sourceCode; }
     QString result() { return m_result; }
 
+    int retrieveTimeoutFromDatabase();
+    QByteArray retrieveInputFromDatabase();
+    QByteArray retrieveOutputFromDatabase();
+
 public signals:
     void finished(bool success);
 
@@ -26,7 +30,9 @@ public slots:
     void start();
 
 private slots:
+    void compileTimeout();
     void compileFinished(int exitCode);
+    void executionTimeout();
     void executionFinished(int exitCode);
 
 private:
@@ -41,6 +47,8 @@ private:
 
 private:
     QProcess *m_process;
+    QTimer *m_timer;
+
     QString m_id;
     QString m_userId;
     QString m_problemId;
@@ -49,4 +57,4 @@ private:
     QString m_result;
 };
 
-#endif JOB_H
+#endif // JOB_H
