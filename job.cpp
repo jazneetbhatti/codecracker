@@ -1,16 +1,17 @@
 #include <job.h>
 
+#include <QtCore/QProcess>
+#include <QtCore/QString>
+#include <QtCore/QByteArray>
+#include <QtSql/QtSql>
+
+#include <queryinterface.h>
+#include <application.h>
+
 Job::Job(QObject *parent):
     QObject(parent),
     m_process(0)
 {
-    m_database = QSqlDatabase::addDatabase("QMYSQL");
-    m_database.setHostName("127.0.0.1");
-    m_database.setDatabaseName("codecrackerdb");
-    m_database.setUserName("virgin");
-    m_database.setPassword("mojito");
-    m_database.open();
-
     m_timer = new QTimer(this);
     m_timer->setSingleShot(true);
 }
@@ -21,6 +22,16 @@ Job::~Job()
     m_database.close();
 }
 
+void Job::connectDatabase()
+{
+    m_database = QSqlDatabase::addDatabase("QMYSQL");
+    m_database.setHostName("127.0.0.1");
+    m_database.setDatabaseName("codecrackerdb");
+    m_database.setUserName("virgin");
+    m_database.setPassword("mojito");
+    m_database.open();
+}
+
 QString Job::compilerPath()
 {
     // FIXME: return path according to m_compilerId
@@ -29,7 +40,7 @@ QString Job::compilerPath()
 
 QString Job::sourceFilePath()
 {
-    return QString("/tmp/codecracker-src-") + m_id;
+    return QString("/tmp/codecracker-src-") + m_id + ".c";
 }
 
 QString Job::executableFilePath()
@@ -39,23 +50,27 @@ QString Job::executableFilePath()
 
 int Job::retrieveTimeoutFromDatabase()
 {
-    QSqlQuery query("SELECT timeout FROM problems WHERE problemId = " + problemId());
-    int timeout = query.value(0).toInt();
+    QueryInterface *queryInterface = dApp->queryInterface();
+    QByteArray result = queryInterface->query("SELECT timeout FROM problems WHERE problemId = '" + problemId()  + "'",
+                   "codecrackerdb_problems_timeout_problemId" + problemId());
+    int timeout = result.toInt();
     return timeout;
 }
 
 QByteArray Job::retrieveInputFromDatabase()
 {
-    QSqlQuery query("SELECT input FROM problems WHERE problemId = " + problemId());
-    QByteArray input = query.value(0).toByteArray();
-    return input;
+    QueryInterface *queryInterface = dApp->queryInterface();
+    QByteArray result = queryInterface->query("SELECT input FROM problems WHERE problemId = '" + problemId()  + "'",
+                                              "codecrackerdb_problems_input_problemId" + problemId());
+    return result;
 }
 
 QByteArray Job::retrieveOutputFromDatabase()
 {
-    QSqlQuery query("SELECT output FROM problems WHERE problemId = " + problemId());
-    QByteArray output = query.value(0).toByteArray();
-    return output;
+    QueryInterface *queryInterface = dApp->queryInterface();
+    QByteArray result = queryInterface->query("SELECT output FROM problems WHERE problemId = '" + problemId()  + "'",
+                                              "codecrackerdb_problems_output_problemId" + problemId());
+    return result;
 }
 
 void Job::start()
@@ -81,7 +96,7 @@ void Job::compileSourceFile()
     m_process = new QProcess(this);
     QStringList arguments;
     arguments << sourceFilePath() << "-o" << executableFilePath();
-    connect (m_process, finished(int), this, compileFinished(int));
+    connect (m_process, SIGNAL(finished(int)), this, SLOT(compileFinished(int)));
     m_process->start(compilerPath(), arguments);
     // use some const value instead of hard coding
     connect (m_timer, SIGNAL(timeout()), this, SLOT(compileTimeout()));
@@ -91,6 +106,7 @@ void Job::compileSourceFile()
 void Job::compileTimeout()
 {
     disconnect(m_process);
+    disconnect(m_timer);
     m_process->kill();
     m_result = "compileTimeout";
     emit finished(true);
@@ -98,7 +114,8 @@ void Job::compileTimeout()
 
 void Job::compileFinished(int exitCode)
 {
-    disconnect(m_timer);
+    m_process->disconnect(this);
+    m_timer->disconnect(this);
     if (exitCode != 0)
     {
         m_result = "compileError";
@@ -111,8 +128,7 @@ void Job::compileFinished(int exitCode)
 
 void Job::executeFile()
 {
-    disconnect(m_process);
-    connect(m_process, finished(int), this, executionFinished(int));
+    connect(m_process, SIGNAL(finished(int)), this, SLOT(executionFinished(int)));
     m_process->start(executableFilePath());
     QByteArray input = retrieveInputFromDatabase();
     m_process->write(input);
@@ -124,7 +140,8 @@ void Job::executeFile()
 
 void Job::executionTimeout()
 {
-    disconnect(m_process);
+    m_process->disconnect(this);
+    m_timer->disconnect(this);
     m_process->kill();
     m_result = "executionTimeout";
     emit finished(true);
@@ -132,7 +149,8 @@ void Job::executionTimeout()
 
 void Job::executionFinished(int exitCode)
 {
-    disconnect(m_timer);
+    m_process->disconnect(this);
+    m_timer->disconnect(this);
     if (exitCode != 0)
     {
         m_result = "runtimeError";

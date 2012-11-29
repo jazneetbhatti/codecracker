@@ -1,14 +1,14 @@
 #ifndef SCORER_H
 #define SCORER_H
 
+class Job;
+
 class Scorer
 {
 public:
     Scorer();
     ~Scorer();
-
-public slots:
-    updateScore();
-}
+    void updateScore(Job *job);
+};
 
 #endif // SCORER_H

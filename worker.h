@@ -2,11 +2,17 @@
 #define WORKER_H
 
 #include <job.h>
+#include <scorer.h>
+
+#include <QtCore/QtCore>
+#include <QtSql/QtSql>
 
 class Worker : public QObject
 {
+    Q_OBJECT
+
 public:
-    Worker(QObject *parent = 0);
+    explicit Worker(QObject *parent = 0);
     ~Worker();
 
 public slots:
@@ -16,6 +22,7 @@ private slots:
     void fetchJob();
     void jobFinished(bool success);
 
+private:
     QObject *m_parent;
     QSqlDatabase m_database;
     Scorer *m_scorer;

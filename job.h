@@ -1,12 +1,21 @@
 #ifndef JOB_H
 #define JOB_H
 
-#include <Qt/QtCore>
+#include <QtCore/QString>
+#include <QtCore/QByteArray>
+#include <QtCore/QObject>
+#include <QtSql/QtSql>
 
-class Job
+class QProcess;
+class QTimer;
+
+class Job : public QObject
 {
+    Q_OBJECT
+
 public:
-    Job(QObject *parent = 0);
+    explicit Job(QObject *parent = 0);
+    ~Job();
     QString id() { return m_id; }
     QString userId() { return m_userId; }
     QString problemId() { return m_problemId; }
@@ -18,15 +27,15 @@ public:
     QByteArray retrieveInputFromDatabase();
     QByteArray retrieveOutputFromDatabase();
 
-public signals:
+signals:
     void finished(bool success);
 
 public slots:
     void setId(QString &id) { m_id = id; };
     void setUserId(QString &userId) { m_userId = userId; };
-    void setProblemId(QString &problemId) { m_problemId = problemId };
-    void setCompilerId(QString &compilerId) { m_compilerId = compilerId };
-    void setSourceCode(QString &sourceCode) { m_sourceCode = sourceCode };
+    void setProblemId(QString &problemId) { m_problemId = problemId; };
+    void setCompilerId(QString &compilerId) { m_compilerId = compilerId; };
+    void setSourceCode(QString &sourceCode) { m_sourceCode = sourceCode; };
     void start();
 
 private slots:
@@ -36,18 +45,20 @@ private slots:
     void executionFinished(int exitCode);
 
 private:
-    QString Job::compilerPath();
-    QString Job::sourceFilePath();
-    QString Job::executableFilePath();
+    QString compilerPath();
+    QString sourceFilePath();
+    QString executableFilePath();
 
+    void connectDatabase();
     void createSourceFile();
     void compileSourceFile();
-    void executeFile():
+    void executeFile();
     void checkOutput();
 
 private:
     QProcess *m_process;
     QTimer *m_timer;
+    QSqlDatabase m_database;
 
     QString m_id;
     QString m_userId;

@@ -1,5 +1,8 @@
 #include <worker.h>
 
+#include <QtCore/QtCore>
+#include <QtSql/QtSql>
+
 Worker::Worker(QObject *parent):
     QObject(parent),
     m_parent(parent),
@@ -15,7 +18,7 @@ Worker::Worker(QObject *parent):
     m_database.open();
 
     connect(m_timer, SIGNAL(timeout()), this, SLOT(fetchJob()));
-    timer->start(1000);
+    m_timer->start(1000);
 }
 
 Worker::~Worker()
@@ -30,13 +33,16 @@ void Worker::setScorer(Scorer *scorer)
 
 void Worker::fetchJob()
 {
+    qDebug() << "fetching jobs";
     if (m_jobCount >= 3)
+    {
+        qDebug() << "too many jobs running";
         return;
-    QSqlQuery query("SELECT jobId, userId, problemId, compilerId, sourceCode FROM jobs LIMIT " + QString::number(3 - m_jobCount), m_database);
-    query.finish();
+    }
+    QSqlQuery query("SELECT jobId, userId, problemId, compilerId, sourceCode FROM jobs WHERE status = 0 LIMIT " + QString::number(3 - m_jobCount));
     while (query.next())
     {
-        m_jobCount++:
+        m_jobCount++;
 
         QString jobId = query.value(0).toString();
         QString userId = query.value(1).toString();
@@ -45,16 +51,17 @@ void Worker::fetchJob()
         QString sourceCode = query.value(4).toString();
 
         // remove the job entry from the jobs queue
-        QSqlQuery removeQuery("DELETE FROM jobs WHERE jobId = " + jobId, m_database);
+        QSqlQuery statusQuery("UPDATE jobs SET status = 1, jobStarted = NOW() WHERE jobId = " + jobId);
 
         Job *job = new Job(this);
-        connect(job, SIGNAL(finished(bool), this, jobFinished(bool));
+        connect(job, SIGNAL(finished(bool)), this, SLOT(jobFinished(bool)));
         job->setId(jobId);
         job->setUserId(userId);
         job->setProblemId(problemId);
         job->setCompilerId(compilerId);
         job->setSourceCode(sourceCode);
         job->start();
+        qDebug() << "job" << job->id() << "dispatched";
     }
 }
 
@@ -62,8 +69,12 @@ void Worker::jobFinished(bool success)
 {
     if (!success)
         return;
-    Job *j = qobject_cast<Job *>(QObject::sender());
-    qDebug() << "job successful";
-    m_scorer->updateScore(Job);
+    Job *finishedJob = qobject_cast<Job *>(QObject::sender());
+    qDebug() << "job " << finishedJob->id() << " successful , result = " << finishedJob->result();
+    QSqlQuery statusQuery("UPDATE jobs SET status = 2, jobFinished = NOW() WHERE jobId = " + finishedJob->id());
+    if (m_scorer)
+    {
+        m_scorer->updateScore(finishedJob);
+    }
     m_jobCount--;
 }

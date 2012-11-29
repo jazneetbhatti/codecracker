@@ -1,5 +1,9 @@
 #include <scorer.h>
 
+#include <job.h>
+
+#include <QtCore/QtCore>
+
 Scorer::Scorer()
 {
 }
