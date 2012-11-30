@@ -1,0 +1,16 @@
+1. rename Job to Checker
+
+2. make Checker an abstract class, with different subclasses for types of checkers. Here are some I can think of
+    a. CompareChecker   -- when problem asks for program from user, single answer correct
+    b. VerifyChecker    -- when problem asks for program from user, multiple answers correct
+    
+    design them so that 'compile and execute' is an optional step, read from codecrackerdb from problems table
+    (useful for problems which ask for just output)
+
+3. need 'compile' and 'execute' classes/standalones for all supported languages, both for user programs and checkers.
+
+4. allow web interface to upload questions, directly to db, with necessary input/output/checker files.
+
+5. web interface
+    a. backend in Django
+    b. beautiful design using Bootstrap.js or maybe handwritten (can use a little help in this area).
