@@ -14,5 +14,5 @@ Scorer::~Scorer()
 
 void Scorer::updateScore(Job *job)
 {
-    qDebug() << "score updated for job " << job->id() <<", job status is " << job->result();
+    qDebug() << "score updated for job " << job->id() <<", job status is " << job->status();
 }

@@ -21,14 +21,14 @@ public:
     QString problemId() { return m_problemId; }
     QString compilerId() { return m_compilerId; }
     QString sourceCode() { return m_sourceCode; }
-    QString result() { return m_result; }
+    QString status() { return m_status; }
 
     int retrieveTimeoutFromDatabase();
     QByteArray retrieveInputFromDatabase();
     QByteArray retrieveOutputFromDatabase();
 
 signals:
-    void finished(bool success);
+    void finished();
 
 public slots:
     void setId(QString &id) { m_id = id; };
@@ -54,18 +54,18 @@ private:
     void compileSourceFile();
     void executeFile();
     void checkOutput();
+    void setStatus(QString status);
 
 private:
     QProcess *m_process;
     QTimer *m_timer;
-    QSqlDatabase m_database;
 
     QString m_id;
     QString m_userId;
     QString m_problemId;
     QString m_compilerId;
     QString m_sourceCode;
-    QString m_result;
+    QString m_status;
 };
 
 #endif // JOB_H

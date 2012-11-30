@@ -20,7 +20,7 @@ public slots:
 
 private slots:
     void fetchJob();
-    void jobFinished(bool success);
+    void jobFinished();
 
 private:
     QObject *m_parent;

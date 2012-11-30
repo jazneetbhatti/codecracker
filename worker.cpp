@@ -39,7 +39,7 @@ void Worker::fetchJob()
         qDebug() << "too many jobs running";
         return;
     }
-    QSqlQuery query("SELECT jobId, userId, problemId, compilerId, sourceCode FROM jobs WHERE status = 0 LIMIT " + QString::number(3 - m_jobCount));
+    QSqlQuery query(QString("SELECT jobId, userId, problemId, compilerId, sourceCode FROM jobs WHERE status = 'new' LIMIT %1").arg(QString::number(3 - m_jobCount)));
     while (query.next())
     {
         m_jobCount++;
@@ -50,11 +50,8 @@ void Worker::fetchJob()
         QString compilerId = query.value(3).toString();
         QString sourceCode = query.value(4).toString();
 
-        // remove the job entry from the jobs queue
-        QSqlQuery statusQuery("UPDATE jobs SET status = 1, jobStarted = NOW() WHERE jobId = " + jobId);
-
         Job *job = new Job(this);
-        connect(job, SIGNAL(finished(bool)), this, SLOT(jobFinished(bool)));
+        connect(job, SIGNAL(finished()), this, SLOT(jobFinished()));
         job->setId(jobId);
         job->setUserId(userId);
         job->setProblemId(problemId);
@@ -65,13 +62,10 @@ void Worker::fetchJob()
     }
 }
 
-void Worker::jobFinished(bool success)
+void Worker::jobFinished()
 {
-    if (!success)
-        return;
     Job *finishedJob = qobject_cast<Job *>(QObject::sender());
-    qDebug() << "job " << finishedJob->id() << " successful , result = " << finishedJob->result();
-    QSqlQuery statusQuery("UPDATE jobs SET status = 2, jobFinished = NOW() WHERE jobId = " + finishedJob->id());
+    qDebug() << "job " << finishedJob->id() << " successful , result = " << finishedJob->status();
     if (m_scorer)
     {
         m_scorer->updateScore(finishedJob);

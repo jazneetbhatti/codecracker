@@ -19,17 +19,6 @@ Job::Job(QObject *parent):
 Job::~Job()
 {
     m_process->kill();
-    m_database.close();
-}
-
-void Job::connectDatabase()
-{
-    m_database = QSqlDatabase::addDatabase("QMYSQL");
-    m_database.setHostName("127.0.0.1");
-    m_database.setDatabaseName("codecrackerdb");
-    m_database.setUserName("virgin");
-    m_database.setPassword("mojito");
-    m_database.open();
 }
 
 QString Job::compilerPath()
@@ -75,6 +64,7 @@ QByteArray Job::retrieveOutputFromDatabase()
 
 void Job::start()
 {
+    setStatus("creatingSourceFile");
     createSourceFile();
     compileSourceFile();
 }
@@ -93,6 +83,7 @@ void Job::createSourceFile()
 
 void Job::compileSourceFile()
 {
+    setStatus("compiling");
     m_process = new QProcess(this);
     QStringList arguments;
     arguments << sourceFilePath() << "-o" << executableFilePath();
@@ -108,8 +99,8 @@ void Job::compileTimeout()
     disconnect(m_process);
     disconnect(m_timer);
     m_process->kill();
-    m_result = "compileTimeout";
-    emit finished(true);
+    setStatus("compileTimeout");
+    emit finished();
 }
 
 void Job::compileFinished(int exitCode)
@@ -118,8 +109,8 @@ void Job::compileFinished(int exitCode)
     m_timer->disconnect(this);
     if (exitCode != 0)
     {
-        m_result = "compileError";
-        emit finished(true);
+        setStatus("compileError");
+        emit finished();
         return;
     }
 
@@ -128,6 +119,7 @@ void Job::compileFinished(int exitCode)
 
 void Job::executeFile()
 {
+    setStatus("executing");
     connect(m_process, SIGNAL(finished(int)), this, SLOT(executionFinished(int)));
     m_process->start(executableFilePath());
     QByteArray input = retrieveInputFromDatabase();
@@ -143,8 +135,8 @@ void Job::executionTimeout()
     m_process->disconnect(this);
     m_timer->disconnect(this);
     m_process->kill();
-    m_result = "executionTimeout";
-    emit finished(true);
+    setStatus("executionTimeout");
+    emit finished();
 }
 
 void Job::executionFinished(int exitCode)
@@ -153,8 +145,8 @@ void Job::executionFinished(int exitCode)
     m_timer->disconnect(this);
     if (exitCode != 0)
     {
-        m_result = "runtimeError";
-        emit finished(true);
+        setStatus("runtimeError");
+        emit finished();
         return;
     }
 
@@ -164,16 +156,23 @@ void Job::executionFinished(int exitCode)
 
 void Job::checkOutput()
 {
+    setStatus("checking");
     QByteArray output = m_process->readAllStandardOutput();
     QByteArray expectedOutput = retrieveOutputFromDatabase();
     if (output == expectedOutput)
     {
-        m_result = "match";
-        emit finished(true);
+        setStatus("match");
+        emit finished();
     }
     else
     {
-        m_result = "wrongAnswer";
-        emit finished(true);
+        setStatus("wrongAnswer");
+        emit finished();
     }
+}
+
+void Job::setStatus(QString status)
+{
+    m_status = status;
+    QSqlQuery statusQuery(QString("UPDATE jobs SET status = '%1', updated = NOW() WHERE jobId = %2").arg(status).arg(id()));
 }
