@@ -11,5 +11,5 @@ CONFIG += link_pkgconfig
 PKGCONFIG += libmemcached
 
 # Input
-HEADERS += application.h job.h memcache.h queryinterface.h scorer.h simplequery.h worker.h
-SOURCES += application.cpp job.cpp main.cpp memcache.cpp queryinterface.cpp scorer.cpp worker.cpp
+HEADERS += abstractchecker.h application.h comparechecker.h job.h memcache.h queryinterface.h scorer.h worker.h
+SOURCES += application.cpp comparechecker.cpp job.cpp main.cpp memcache.cpp queryinterface.cpp scorer.cpp worker.cpp

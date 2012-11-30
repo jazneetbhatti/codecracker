@@ -8,9 +8,12 @@
 #include <queryinterface.h>
 #include <application.h>
 
+#include <comparechecker.h>
+
 Job::Job(QObject *parent):
     QObject(parent),
-    m_process(0)
+    m_process(0),
+    m_checker(0)
 {
     m_timer = new QTimer(this);
     m_timer->setSingleShot(true);
@@ -159,16 +162,17 @@ void Job::checkOutput()
     setStatus("checking");
     QByteArray output = m_process->readAllStandardOutput();
     QByteArray expectedOutput = retrieveOutputFromDatabase();
-    if (output == expectedOutput)
-    {
-        setStatus("match");
-        emit finished();
-    }
-    else
-    {
-        setStatus("wrongAnswer");
-        emit finished();
-    }
+    m_checker = new CompareChecker();
+    m_checker->setOutput(output);
+    m_checker->setExpectedOutput(expectedOutput);
+    connect(m_checker, SIGNAL(statusChanged(QString)), this, SLOT(setStatus(QString)));
+    connect(m_checker, SIGNAL(finished()), this, SLOT(checkingFinished()));
+    m_checker->start();
+}
+
+void Job::checkingFinished()
+{
+    emit finished();
 }
 
 void Job::setStatus(QString status)

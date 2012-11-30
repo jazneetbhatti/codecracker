@@ -8,6 +8,7 @@
 
 class QProcess;
 class QTimer;
+class AbstractChecker;
 
 class Job : public QObject
 {
@@ -43,6 +44,8 @@ private slots:
     void compileFinished(int exitCode);
     void executionTimeout();
     void executionFinished(int exitCode);
+    void checkingFinished();
+    void setStatus(QString status);
 
 private:
     QString compilerPath();
@@ -54,11 +57,11 @@ private:
     void compileSourceFile();
     void executeFile();
     void checkOutput();
-    void setStatus(QString status);
 
 private:
     QProcess *m_process;
     QTimer *m_timer;
+    AbstractChecker *m_checker;
 
     QString m_id;
     QString m_userId;
